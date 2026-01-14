@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/alerts_list_response.schema.json",
+    "title": "AlertsListResponse",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "alerts"
+    ],
+    "properties": {
+        "alerts": {
+            "type": "array",
+            "items": {
+                "$ref": "alert_event.schema.json"
+            }
+        }
+    }
+}

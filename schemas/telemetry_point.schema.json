@@ -1,0 +1,115 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/telemetry_point.schema.json",
+    "title": "TelemetryPoint",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "object_id",
+        "ts",
+        "position",
+        "confidence",
+        "telemetry"
+    ],
+    "properties": {
+        "object_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable identifier for the tracked asset"
+        },
+        "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp in UTC recommended"
+        },
+        "position": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "lat",
+                "lon"
+            ],
+            "properties": {
+                "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                },
+                "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                },
+                "alt_m": {
+                    "type": "number"
+                }
+            }
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Detection or tracking confidence"
+        },
+        "telemetry": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "speed_mps",
+                "heading_deg"
+            ],
+            "properties": {
+                "speed_mps": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "heading_deg": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 360
+                },
+                "rssi_dbm": {
+                    "type": "number"
+                },
+                "battery_pct": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                },
+                "source": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "inference": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "category",
+                "class_confidence"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "UAV",
+                        "VEHICLE",
+                        "BEACON",
+                        "UNKNOWN"
+                    ]
+                },
+                "class_confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                }
+            }
+        },
+        "meta": {
+            "type": "object",
+            "description": "Freeform metadata for debugging or simulation tags",
+            "additionalProperties": true
+        }
+    }
+}

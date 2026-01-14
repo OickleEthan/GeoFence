@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/telemetry_list_response.schema.json",
+    "title": "TelemetryListResponse",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "object_id",
+        "points"
+    ],
+    "properties": {
+        "object_id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "points": {
+            "type": "array",
+            "items": {
+                "$ref": "telemetry_point.schema.json"
+            }
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/api_ok.schema.json",
+    "title": "ApiOk",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "ok"
+    ],
+    "properties": {
+        "ok": {
+            "type": "boolean",
+            "const": true
+        }
+    }
+}

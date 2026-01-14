@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/objects_list_response.schema.json",
+    "title": "ObjectsListResponse",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "objects"
+    ],
+    "properties": {
+        "objects": {
+            "type": "array",
+            "items": {
+                "$ref": "object_summary.schema.json"
+            }
+        }
+    }
+}

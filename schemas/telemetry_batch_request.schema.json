@@ -1,0 +1,19 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/telemetry_batch_request.schema.json",
+    "title": "TelemetryBatchRequest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "points"
+    ],
+    "properties": {
+        "points": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "telemetry_point.schema.json"
+            }
+        }
+    }
+}

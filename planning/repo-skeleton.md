@@ -1,0 +1,84 @@
+geofence-tracker/
+  README.md
+  LICENSE
+  .gitignore
+
+  planning/
+    MVP.md
+    repo-skeleton.md
+    day1.md
+    day2.md
+    day3.md
+
+  schemas/
+    telemetry_point.schema.json
+    telemetry_batch_request.schema.json
+    object_summary.schema.json
+    objects_list_response.schema.json
+    telemetry_list_response.schema.json
+    zone.schema.json
+    zones_list_response.schema.json
+    alert_event.schema.json
+    alerts_list_response.schema.json
+    api_error.schema.json
+    api_ok.schema.json
+
+  backend/
+    pyproject.toml
+    uv.lock (optional)
+    src/
+      app/
+        main.py
+        api/
+          routes_objects.py
+          routes_telemetry.py
+          routes_zones.py
+          routes_alerts.py
+        core/
+          config.py
+          logging.py
+        db/
+          session.py
+          models.py
+          migrations/ (optional)
+        services/
+          ingestion.py
+          zone_eval.py
+          alerting.py
+          staleness.py
+        utils/
+          geo.py
+          time.py
+        tests/
+          test_zone_eval.py
+          test_dedupe.py
+
+  frontend/
+    package.json
+    vite.config.ts
+    tsconfig.json
+    src/
+      main.tsx
+      app/
+        App.tsx
+        api/
+          client.ts
+          types.ts
+        components/
+          MapView.tsx
+          ObjectList.tsx
+          ObjectDetails.tsx
+          ZoneEditor.tsx
+          AlertsPanel.tsx
+        state/
+          useTelemetry.ts
+          useAlerts.ts
+          useZones.ts
+        styles/
+          app.css
+
+  tools/
+    telemetry_generator/
+      generator.py
+      routes.json
+      README.md

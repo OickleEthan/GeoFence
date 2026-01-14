@@ -1,0 +1,58 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/schemas/alert_event.schema.json",
+    "title": "AlertEvent",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "id",
+        "ts",
+        "object_id",
+        "zone_id",
+        "rule_type",
+        "severity",
+        "message"
+    ],
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "ts": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "object_id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "zone_id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "rule_type": {
+            "type": "string",
+            "enum": [
+                "ENTER",
+                "EXIT",
+                "STALE_IN_ZONE",
+                "LOW_CONFIDENCE_IN_ZONE"
+            ]
+        },
+        "severity": {
+            "type": "string",
+            "enum": [
+                "INFO",
+                "WARN",
+                "CRITICAL"
+            ]
+        },
+        "message": {
+            "type": "string",
+            "minLength": 1
+        },
+        "meta": {
+            "type": "object",
+            "additionalProperties": true
+        }
+    }
+}
