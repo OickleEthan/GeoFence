@@ -3,7 +3,10 @@
 ## Overview
 A real-time map-based tracking tool that ingests telemetry for multiple assets, renders their movement, and triggers alerts when assets cross user-defined zones.
 
-## Features (what works)
+## Background
+I decided to choose this problem because during my interview with Ashley, we had a discussion about the mission in Feburary where snowmobiles are crossing the Arctic Corridor and Dominion Dynamics is tasked with tracking them. This problem resonated with me and I thought it would be a fun challenge to build a tool to help with this mission.
+
+## Features
 - Live object localization on a map
 - Confidence value + additional telemetry fields (speed, heading, etc.)
 - User drawn zones (polygon and/or bbox)
@@ -52,14 +55,43 @@ List endpoints with short examples:
 - Performance (downsampling trail, fixed UI refresh cadence)
 
 ## How to Run
+
 ### Backend
-Commands…
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the FastAPI server:
+   ```bash
+   python -m uvicorn src.app.main:app --reload
+   ```
+   The backend will be available at `http://localhost:8000`. Database (`database.db`) will be created automatically on startup.
 
 ### Frontend
-Commands…
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+   The frontend will be available at `http://localhost:5173`.
 
 ### Telemetry Generator
-Commands…
+From the project root, run the simulation script to generate live movements:
+```bash
+python tools/telemetry_generator/generator.py
+```
+This script simulates drone and vehicle movements across the Canadian Arctic and sends telemetry data to the backend API.
 
 ## Testing
 - Unit tests for: point-in-polygon, state transitions, dedupe

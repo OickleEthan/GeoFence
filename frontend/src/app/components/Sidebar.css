@@ -131,13 +131,52 @@
     }
 }
 
-.sidebar-content h2 {
-    margin: 0 0 16px 0;
+.sidebar-section {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.sidebar-section h2 {
+    margin: 0;
     font-size: 0.875rem;
     font-weight: 600;
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+.add-zone-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.add-zone-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f8fafc;
+}
+
+.alerts-section {
+    flex: 1;
+    min-height: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 16px;
+    margin-bottom: 0;
 }
 
 .object-list {
@@ -196,6 +235,89 @@
     text-align: center;
     padding: 20px;
     font-size: 0.875rem;
+}
+
+.zone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.zone-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.zone-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.zone-item.selected {
+    border-color: #06b6d4;
+    background: rgba(6, 182, 212, 0.1);
+}
+
+.zone-icon {
+    color: #06b6d4;
+    flex-shrink: 0;
+}
+
+.zone-name {
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zone-tag {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+    margin-right: 4px;
+}
+
+.delete-zone-btn {
+    opacity: 0;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.zone-item:hover .delete-zone-btn {
+    opacity: 1;
+}
+
+.delete-zone-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.no-zones {
+    font-size: 0.8rem;
+    color: #64748b;
+    padding: 10px;
+    text-align: center;
 }
 
 /* Custom scrollbar */

@@ -3,20 +3,43 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { api } from '../api/client';
 import { TrackedObject, Zone } from '../api/types';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import './MapView.css';
 
 interface MapViewProps {
     onObjectSelect: (obj: TrackedObject | null) => void;
     onObjectsUpdate?: (objects: TrackedObject[]) => void;
+    onZonesUpdate?: (zones: Zone[]) => void;
+    onClearSelection?: () => void;
     selectedObjectId?: string | null;
+    selectedZoneId?: number | null;
+    drawTrigger?: number;
+    zoneRefreshTrigger?: number;
 }
 
-export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdate, selectedObjectId }) => {
+export const MapView: React.FC<MapViewProps> = ({
+    onObjectSelect,
+    onObjectsUpdate,
+    onZonesUpdate,
+    onClearSelection,
+    selectedObjectId,
+    selectedZoneId,
+    drawTrigger,
+    zoneRefreshTrigger
+}) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
+    const draw = useRef<MapboxDraw | null>(null);
     const markers = useRef<{ [key: string]: maplibregl.Marker }>({});
+    const onObjectSelectRef = useRef(onObjectSelect);
+    const onClearSelectionRef = useRef(onClearSelection);
 
-    // State for data
+    // Update refs when props change
+    useEffect(() => {
+        onObjectSelectRef.current = onObjectSelect;
+        onClearSelectionRef.current = onClearSelection;
+    }, [onObjectSelect, onClearSelection]);
 
     // Initialize Map
     useEffect(() => {
@@ -24,7 +47,6 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
 
         map.current = new maplibregl.Map({
             container: mapContainer.current!,
-            // Use inline style to avoid external CORS/Rate-limiting issues
             style: {
                 version: 8,
                 sources: {
@@ -49,18 +71,54 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
                 }]
             },
             center: [-68.5170, 63.7467], // Iqaluit
-            zoom: 3, // Zoom out to show context (Baffin Island/Canada)
+            zoom: 3,
             pitch: 45,
         });
 
-        map.current.on('error', (e) => {
-            console.error("MapLibre Error:", e);
+        draw.current = new MapboxDraw({
+            displayControlsDefault: false,
+            controls: {
+                polygon: false,
+                trash: false
+            },
+            defaultMode: 'simple_select'
+        });
+
+        map.current.addControl(draw.current as any, 'top-left');
+
+        map.current.on('draw.create', async (e) => {
+            const feature = e.features[0];
+            if (feature.geometry.type === 'Polygon') {
+                const name = prompt("Enter Zone Name:", "New Zone") || "Unnamed Zone";
+                const coords = feature.geometry.coordinates[0]; // [ [lon, lat], ... ]
+                // Convert to [[lat, lon], ...] for backend compatibility if desired, 
+                // but let's stick to [[lat, lon]] as stored in backend models.py plan.
+                const latLonCoords = coords.map((c: number[]) => [c[1], c[0]]);
+
+                try {
+                    await api.createZone({
+                        name,
+                        is_polygon: true,
+                        polygon_coords: JSON.stringify(latLonCoords),
+                        enabled: true
+                    });
+                    loadZones(); // Refresh zones
+                    draw.current?.deleteAll(); // Clear the drawn temporary shape
+                } catch (err) {
+                    console.error("Failed to create zone", err);
+                }
+            }
         });
 
         map.current.on('load', () => {
-            // Add dark overlay if style is too bright, or load custom dark style
-            // For MVP, we'll stick to basic style but maybe tweak colors if possible
             loadZones();
+        });
+
+        map.current.on('click', (e) => {
+            console.log("Map background clicked");
+            if (onClearSelectionRef.current) {
+                onClearSelectionRef.current();
+            }
         });
 
     }, []);
@@ -72,19 +130,25 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
                 const objects = await api.getObjects();
                 updateMarkers(objects);
                 updateTrails(objects);
-                // Notify parent of new data
                 if (onObjectsUpdate) {
                     onObjectsUpdate(objects);
                 }
             } catch (e) {
                 console.error("Polling error", e);
             }
-        }, 1000); // 1Hz
+        }, 1000);
 
         return () => clearInterval(interval);
     }, [onObjectsUpdate]);
 
-    // Fly to selected object when selectedObjectId changes
+    // Trigger Drawing Mode from Sidebar
+    useEffect(() => {
+        if (drawTrigger && drawTrigger > 0 && draw.current) {
+            draw.current.changeMode('draw_polygon');
+        }
+    }, [drawTrigger]);
+
+    // Fly to selected object
     useEffect(() => {
         if (!map.current || !selectedObjectId) return;
 
@@ -100,7 +164,51 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
     }, [selectedObjectId]);
 
 
-    // Update Trails for all objects
+    useEffect(() => {
+        if (zoneRefreshTrigger && zoneRefreshTrigger > 0) {
+            loadZones();
+        }
+    }, [zoneRefreshTrigger]);
+
+    // Fly to selected zone
+    useEffect(() => {
+        if (!map.current || !selectedZoneId) return;
+
+        const flyToZone = async () => {
+            try {
+                const zones = await api.getZones();
+                const zone = zones.find(z => z.id === selectedZoneId);
+                if (!zone) return;
+
+                let center: [number, number];
+                if (zone.is_polygon && zone.polygon_coords) {
+                    const coords = JSON.parse(zone.polygon_coords) as number[][];
+                    // Calculate centroid
+                    const lats = coords.map(c => c[0]);
+                    const lons = coords.map(c => c[1]);
+                    const avgLat = lats.reduce((a, b) => a + b) / lats.length;
+                    const avgLon = lons.reduce((a, b) => a + b) / lons.length;
+                    center = [avgLon, avgLat];
+                } else if (zone.min_lon !== undefined && zone.max_lon !== undefined && zone.min_lat !== undefined && zone.max_lat !== undefined) {
+                    center = [(zone.min_lon + zone.max_lon) / 2, (zone.min_lat + zone.max_lat) / 2];
+                } else {
+                    return;
+                }
+
+                map.current?.flyTo({
+                    center: center,
+                    zoom: 14,
+                    duration: 1500
+                });
+            } catch (e) {
+                console.error("Failed to fly to zone", e);
+            }
+        };
+
+        flyToZone();
+    }, [selectedZoneId]);
+
+    // Update Trails
     const updateTrails = async (objects: TrackedObject[]) => {
         if (!map.current) return;
 
@@ -109,7 +217,6 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
                 const history = await api.getHistory(obj.id, 30);
                 if (history.length < 2) continue;
 
-                // Sort by timestamp ascending for correct line order
                 const sorted = history.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
                 const coordinates = sorted.map(r => [r.lon, r.lat]);
 
@@ -129,13 +236,10 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
                 };
 
                 if (map.current.getSource(sourceId)) {
-                    // Update existing source
                     (map.current.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geoData);
                 } else {
-                    // Create new source and layer
                     map.current.addSource(sourceId, { type: 'geojson', data: geoData });
 
-                    // Choose color based on object type
                     let color = '#fca5a5';
                     if (obj.id.includes('drone')) color = '#fbbf24';
                     if (obj.id.includes('vehicle')) color = '#34d399';
@@ -157,58 +261,78 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
         }
     };
 
-    // Load Zones once
+    // Load Zones
     const loadZones = async () => {
         try {
             const z = await api.getZones();
-            // setZones(z);
             renderZones(z);
+            if (onZonesUpdate) {
+                onZonesUpdate(z);
+            }
         } catch (e) { console.error(e); }
     };
 
     const renderZones = (zones: Zone[]) => {
         if (!map.current) return;
 
-        // Simple GeoJSON for zones
-        const features = zones.map(z => ({
-            type: 'Feature',
-            geometry: {
-                type: 'Polygon',
-                coordinates: [[
+        const features = zones.map(z => {
+            let coordinates: any = [];
+            if (z.is_polygon && z.polygon_coords) {
+                const coords = JSON.parse(z.polygon_coords);
+                // Backend: [[lat, lon], ...], Frontend: [[lon, lat], ...]
+                coordinates = [coords.map((c: any) => [c[1], c[0]])];
+            } else if (z.min_lat !== undefined && z.min_lon !== undefined) {
+                coordinates = [[
                     [z.min_lon, z.min_lat],
                     [z.max_lon, z.min_lat],
                     [z.max_lon, z.max_lat],
                     [z.min_lon, z.max_lat],
                     [z.min_lon, z.min_lat]
-                ]]
-            },
-            properties: { name: z.name }
-        }));
-
-        map.current.addSource('zones', {
-            type: 'geojson',
-            data: { type: 'FeatureCollection', features: features as any }
-        });
-
-        map.current.addLayer({
-            id: 'zones-fill',
-            type: 'fill',
-            source: 'zones',
-            paint: {
-                'fill-color': '#0891b2', // Cyan
-                'fill-opacity': 0.2
+                ]];
             }
+
+            return {
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: coordinates
+                },
+                properties: { name: z.name, id: z.id }
+            };
         });
 
-        map.current.addLayer({
-            id: 'zones-outline',
-            type: 'line',
-            source: 'zones',
-            paint: {
-                'line-color': '#06b6d4',
-                'line-width': 2
-            }
-        });
+        const sourceId = 'zones-data';
+        if (map.current.getSource(sourceId)) {
+            (map.current.getSource(sourceId) as maplibregl.GeoJSONSource).setData({
+                type: 'FeatureCollection',
+                features: features as any
+            });
+        } else {
+            map.current.addSource(sourceId, {
+                type: 'geojson',
+                data: { type: 'FeatureCollection', features: features as any }
+            });
+
+            map.current.addLayer({
+                id: 'zones-fill',
+                type: 'fill',
+                source: sourceId,
+                paint: {
+                    'fill-color': '#0891b2',
+                    'fill-opacity': 0.2
+                }
+            });
+
+            map.current.addLayer({
+                id: 'zones-outline',
+                type: 'line',
+                source: sourceId,
+                paint: {
+                    'line-color': '#06b6d4',
+                    'line-width': 2
+                }
+            });
+        }
     };
 
     const updateMarkers = (objects: TrackedObject[]) => {
@@ -220,7 +344,11 @@ export const MapView: React.FC<MapViewProps> = ({ onObjectSelect, onObjectsUpdat
                 // Create new marker
                 const el = document.createElement('div');
                 el.className = 'marker';
-                el.onclick = () => onObjectSelect(obj);
+                el.addEventListener('click', (e) => {
+                    console.log(`Marker clicked: ${obj.id}`);
+                    e.stopPropagation();
+                    onObjectSelectRef.current(obj);
+                });
 
                 // Simple style for now
                 el.style.backgroundColor = '#fca5a5'; // Red-300 default

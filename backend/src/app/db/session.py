@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session
 
-sqlite_file_name = "database.db"
+sqlite_file_name = "database_v2.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}

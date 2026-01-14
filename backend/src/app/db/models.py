@@ -4,13 +4,18 @@ from pydantic import BaseModel, Field, field_validator
 from sqlmodel import SQLModel, Field as SQLField
 from enum import Enum
 
-# --- Enums ---
-
 class ObjectCategory(str, Enum):
     UAV = "UAV"
     VEHICLE = "VEHICLE"
     BEACON = "BEACON"
     UNKNOWN = "UNKNOWN"
+
+class AlertType(str, Enum):
+    ENTER = "ENTER"
+    EXIT = "EXIT"
+    LOW_CONFIDENCE = "LOW_CONFIDENCE"
+    STALE = "STALE"
+
 
 # --- Shared Pydantic Models (API DTOs) ---
 
@@ -75,11 +80,30 @@ class TelemetryRecord(SQLModel, table=True):
 class Zone(SQLModel, table=True):
     id: Optional[int] = SQLField(default=None, primary_key=True)
     name: str
-    # BBOX definition
-    min_lat: float
-    min_lon: float
-    max_lat: float
-    max_lon: float
+    # BBOX definition (fallback/legacy)
+    min_lat: Optional[float] = None
+    min_lon: Optional[float] = None
+    max_lat: Optional[float] = None
+    max_lon: Optional[float] = None
+    
+    # Polygon definition: list of [lat, lon] pairs stored as JSON string or similar
+    is_polygon: bool = False
+    polygon_coords: Optional[str] = None # JSON string: "[[lat, lon], ...]"
     
     enabled: bool = True
     created_at: datetime = SQLField(default_factory=datetime.utcnow)
+
+class ObjectZoneState(SQLModel, table=True):
+    object_id: str = SQLField(primary_key=True)
+    zone_id: int = SQLField(primary_key=True)
+    is_inside: bool = False
+    last_updated: datetime = SQLField(default_factory=datetime.utcnow)
+
+class AlertEvent(SQLModel, table=True):
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    ts: datetime = SQLField(default_factory=datetime.utcnow, index=True)
+    object_id: str = SQLField(index=True)
+    zone_id: Optional[int] = SQLField(index=True)
+    alert_type: AlertType
+    message: str
+    ack: bool = False

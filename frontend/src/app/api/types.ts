@@ -33,20 +33,33 @@ export interface TrackedObject {
     battery_pct?: number;
 }
 
+export enum AlertType {
+    ENTER = "ENTER",
+    EXIT = "EXIT",
+    LOW_CONFIDENCE = "LOW_CONFIDENCE",
+    STALE = "STALE"
+}
+
 export interface Zone {
-    id: number;
+    id?: number;
     name: string;
-    min_lat: number;
-    min_lon: number;
-    max_lat: number;
-    max_lon: number;
+    min_lat?: number;
+    min_lon?: number;
+    max_lat?: number;
+    max_lon?: number;
+    is_polygon: boolean;
+    polygon_coords?: string; // JSON string
     enabled: boolean;
 }
 
 export interface AlertEvent {
+    id: number;
     ts: string;
+    object_id: string;
+    zone_id?: number;
+    alert_type: AlertType;
     message: string;
-    type: string;
+    ack: boolean;
 }
 
 export interface TelemetryRecord {

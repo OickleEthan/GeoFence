@@ -2,12 +2,17 @@ import { useState, useCallback } from 'react';
 import { MapView } from './components/MapView';
 import { Overlay } from './components/Overlay';
 import { Sidebar } from './components/Sidebar';
-import { TrackedObject } from './api/types';
+import { TrackedObject, Zone } from './api/types';
+import { api } from './api/client';
 
 function App() {
     const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
     const [objects, setObjects] = useState<TrackedObject[]>([]);
+    const [zones, setZones] = useState<Zone[]>([]);
+    const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [drawTrigger, setDrawTrigger] = useState(0);
+    const [zoneRefreshTrigger, setZoneRefreshTrigger] = useState(0);
 
     console.log("App Mounting...");
 
@@ -26,24 +31,60 @@ function App() {
         setObjects(newObjects);
     }, []);
 
+    // Callback when MapView fetches/updates zones
+    const handleZonesUpdate = useCallback((newZones: Zone[]) => {
+        setZones(newZones);
+    }, []);
+
+    // Callback when user clicks a zone
+    const handleZoneSelect = useCallback((zone: Zone) => {
+        setSelectedZoneId(zone.id || null);
+        setSelectedObjectId(null); // Deselect object when zone selected
+    }, []);
+
+    const handleRemoveZone = useCallback(async (id: number) => {
+        try {
+            await api.deleteZone(id);
+            setZoneRefreshTrigger(prev => prev + 1);
+            if (selectedZoneId === id) setSelectedZoneId(null);
+        } catch (e) {
+            console.error("Failed to delete zone", e);
+        }
+    }, [selectedZoneId]);
+
+    const handleClearSelection = useCallback(() => {
+        setSelectedObjectId(null);
+        setSelectedZoneId(null);
+    }, []);
+
     return (
         <div className="app-shell">
             <Sidebar
                 objects={objects}
+                zones={zones}
                 isOpen={sidebarOpen}
                 onToggle={() => setSidebarOpen(!sidebarOpen)}
                 onSelectObject={handleObjectSelect}
+                onSelectZone={handleZoneSelect}
+                onAddZone={() => setDrawTrigger(prev => prev + 1)}
+                onRemoveZone={handleRemoveZone}
                 selectedObjectId={selectedObjectId}
+                selectedZoneId={selectedZoneId}
             />
             <Overlay
                 selectedObject={selectedObject}
-                onCloseDetails={() => setSelectedObjectId(null)}
+                onCloseDetails={handleClearSelection}
                 sidebarOpen={sidebarOpen}
             />
             <MapView
                 onObjectSelect={handleObjectSelect}
                 onObjectsUpdate={handleObjectsUpdate}
+                onZonesUpdate={handleZonesUpdate}
+                onClearSelection={handleClearSelection}
                 selectedObjectId={selectedObjectId}
+                selectedZoneId={selectedZoneId}
+                drawTrigger={drawTrigger}
+                zoneRefreshTrigger={zoneRefreshTrigger}
             />
         </div>
     );

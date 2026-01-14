@@ -11,8 +11,8 @@ Render live moving objects on a map using generator -> backend -> frontend.
 - [x] GET /api/objects/{id}/telemetry (last N)
 
 ## Generator
-- [x] Implement routes.json with 2 routes
-- [x] Emit 1 Hz telemetry for 2 objects
+- [x] Implement routes.json with 3 routes
+- [x] Emit 1 Hz telemetry for 3 objects
 - [x] Compute speed + heading from successive points
 - [x] Post batches to backend
 

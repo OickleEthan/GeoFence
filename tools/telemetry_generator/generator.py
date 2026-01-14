@@ -37,6 +37,26 @@ class SimulatedObject:
             self.lon += 0.0001
             self.heading = 45.0
             self.speed = 22.5
+        elif self.movement_type == "lateral_bounce":
+            # 300 m/s lateral move
+            # At ~60N, 1 deg lon approx 55.8km. 0.3km / 55.8 = 0.00537 deg/s
+            speed_deg = 0.00537
+            
+            if not hasattr(self, 'direction'):
+                self.direction = 1 # 1 = east, -1 = west
+            
+            self.lon += self.direction * speed_deg
+            self.heading = 90 if self.direction == 1 else 270
+            self.speed = 300.0
+            
+            # Canada Latitudinal Boundaries (approx)
+            # West: -130 (BC coast area), East: -55 (Nfld area)
+            if self.lon > -55:
+                self.direction = -1
+                self.lon = -55
+            elif self.lon < -130:
+                self.direction = 1
+                self.lon = -130
         else:
             self.heading = 0
             self.speed = 0
@@ -48,6 +68,11 @@ class SimulatedObject:
         self.rssi = random.uniform(-60, -85)
 
     def get_payload(self):
+        # Occasionally drop confidence for testing alerts
+        self.confidence = 0.99
+        if random.random() < 0.05: # 5% chance of low confidence
+            self.confidence = random.uniform(0.1, 0.49)
+
         return {
             "object_id": self.obj_id,
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -56,7 +81,7 @@ class SimulatedObject:
                 "lon": self.lon,
                 "alt_m": 120.5
             },
-            "confidence": 0.99,
+            "confidence": self.confidence,
             "telemetry": {
                 "speed_mps": self.speed,
                 "heading_deg": self.heading,
@@ -71,7 +96,8 @@ def run_simulation():
       # Iqaluit, Nunavut Coordinates
     # Lat: ~63.7467, Lon: ~-68.5170
     SimulatedObject("drone_alpha", 63.7467, -68.5170, "circle"),
-    SimulatedObject("vehicle_bravo", 63.7450, -68.5150, "linear")
+    SimulatedObject("vehicle_bravo", 63.7450, -68.5150, "linear"),
+    SimulatedObject("supersonic_drone", 60.0, -95.0, "lateral_bounce")
     ]
     
     print(f"Starting simulation for {len(objects)} objects...")
