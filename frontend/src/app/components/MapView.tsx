@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { api } from '../api/client';
 import { TrackedObject, Zone } from '../api/types';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import { Check, X, MapPin } from 'lucide-react';
 import './MapView.css';
 
 interface MapViewProps {
@@ -34,6 +35,12 @@ export const MapView: React.FC<MapViewProps> = ({
     const markers = useRef<{ [key: string]: maplibregl.Marker }>({});
     const onObjectSelectRef = useRef(onObjectSelect);
     const onClearSelectionRef = useRef(onClearSelection);
+
+    // Editing State
+    const [isEditingZone, setIsEditingZone] = useState(false);
+    const [editingZoneName, setEditingZoneName] = useState('New Zone');
+    const [editingZoneColor, setEditingZoneColor] = useState('#06b6d4');
+    const [tempCoords, setTempCoords] = useState<number[][] | null>(null);
 
     // Update refs when props change
     useEffect(() => {
@@ -86,27 +93,13 @@ export const MapView: React.FC<MapViewProps> = ({
 
         map.current.addControl(draw.current as any, 'top-left');
 
-        map.current.on('draw.create', async (e) => {
+        map.current.on('draw.create', (e) => {
             const feature = e.features[0];
             if (feature.geometry.type === 'Polygon') {
-                const name = prompt("Enter Zone Name:", "New Zone") || "Unnamed Zone";
                 const coords = feature.geometry.coordinates[0]; // [ [lon, lat], ... ]
-                // Convert to [[lat, lon], ...] for backend compatibility if desired, 
-                // but let's stick to [[lat, lon]] as stored in backend models.py plan.
+                // Convert to [[lat, lon], ...] for backend
                 const latLonCoords = coords.map((c: number[]) => [c[1], c[0]]);
-
-                try {
-                    await api.createZone({
-                        name,
-                        is_polygon: true,
-                        polygon_coords: JSON.stringify(latLonCoords),
-                        enabled: true
-                    });
-                    loadZones(); // Refresh zones
-                    draw.current?.deleteAll(); // Clear the drawn temporary shape
-                } catch (err) {
-                    console.error("Failed to create zone", err);
-                }
+                setTempCoords(latLonCoords);
             }
         });
 
@@ -145,6 +138,10 @@ export const MapView: React.FC<MapViewProps> = ({
     useEffect(() => {
         if (drawTrigger && drawTrigger > 0 && draw.current) {
             draw.current.changeMode('draw_polygon');
+            setIsEditingZone(true);
+            setEditingZoneName(`Zone ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+            setEditingZoneColor('#06b6d4');
+            setTempCoords(null);
         }
     }, [drawTrigger]);
 
@@ -297,7 +294,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     type: 'Polygon',
                     coordinates: coordinates
                 },
-                properties: { name: z.name, id: z.id }
+                properties: { name: z.name, id: z.id, color: z.color || '#06b6d4' }
             };
         });
 
@@ -318,7 +315,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 type: 'fill',
                 source: sourceId,
                 paint: {
-                    'fill-color': '#0891b2',
+                    'fill-color': ['get', 'color'],
                     'fill-opacity': 0.2
                 }
             });
@@ -328,7 +325,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 type: 'line',
                 source: sourceId,
                 paint: {
-                    'line-color': '#06b6d4',
+                    'line-color': ['get', 'color'],
                     'line-width': 2
                 }
             });
@@ -365,5 +362,102 @@ export const MapView: React.FC<MapViewProps> = ({
         });
     };
 
-    return <div ref={mapContainer} className="map-container" />;
+    const handleSaveZone = async () => {
+        if (!tempCoords) {
+            alert("Please draw a zone on the map first.");
+            return;
+        }
+
+        try {
+            await api.createZone({
+                name: editingZoneName,
+                is_polygon: true,
+                polygon_coords: JSON.stringify(tempCoords),
+                enabled: true,
+                color: editingZoneColor
+            });
+            setIsEditingZone(false);
+            setTempCoords(null);
+            draw.current?.deleteAll();
+            draw.current?.changeMode('simple_select');
+            loadZones();
+        } catch (err) {
+            console.error("Failed to save zone", err);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditingZone(false);
+        setTempCoords(null);
+        draw.current?.deleteAll();
+        draw.current?.changeMode('simple_select');
+    };
+
+    return (
+        <div className="map-wrapper">
+            <div ref={mapContainer} className="map-container" />
+
+            {isEditingZone && (
+                <div className="zone-editor-overlay">
+                    <div className="zone-editor-card">
+                        <div className="zone-editor-input-group">
+                            <MapPin size={18} className="text-cyan-400" />
+                            <input
+                                type="text"
+                                value={editingZoneName}
+                                onChange={(e) => setEditingZoneName(e.target.value)}
+                                placeholder="Zone Name"
+                                className="zone-name-input"
+                            />
+                        </div>
+
+                        <div className="zone-editor-divider" />
+
+                        <div className="zone-color-picker">
+                            {[
+                                '#06b6d4', // Cyan
+                                '#10b981', // Emerald
+                                '#3b82f6', // Blue
+                                '#8b5cf6', // Violet
+                                '#ec4899', // Pink
+                                '#ef4444', // Red
+                                '#f59e0b', // Amber
+                            ].map(color => (
+                                <button
+                                    key={color}
+                                    className={`color-swatch ${editingZoneColor === color ? 'active' : ''}`}
+                                    style={{ backgroundColor: color }}
+                                    onClick={() => setEditingZoneColor(color)}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="zone-editor-divider" />
+
+                        <div className="zone-editor-actions">
+                            <button
+                                className="action-button save"
+                                onClick={handleSaveZone}
+                                title="Save Zone"
+                            >
+                                <Check size={20} />
+                            </button>
+                            <button
+                                className="action-button cancel"
+                                onClick={handleCancelEdit}
+                                title="Cancel"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                    </div>
+                    {!tempCoords && (
+                        <div className="editor-hint">
+                            Click on the map to start drawing your zone polygon...
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 };

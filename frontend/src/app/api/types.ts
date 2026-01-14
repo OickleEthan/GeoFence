@@ -50,6 +50,7 @@ export interface Zone {
     is_polygon: boolean;
     polygon_coords?: string; // JSON string
     enabled: boolean;
+    color?: string;
 }
 
 export interface AlertEvent {

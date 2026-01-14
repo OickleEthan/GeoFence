@@ -91,7 +91,8 @@ class Zone(SQLModel, table=True):
     polygon_coords: Optional[str] = None # JSON string: "[[lat, lon], ...]"
     
     enabled: bool = True
-    created_at: datetime = SQLField(default_factory=datetime.utcnow)
+    color: str = SQLField(default="#06b6d4")
+    created_at: Optional[datetime] = SQLField(default_factory=datetime.utcnow)
 
 class ObjectZoneState(SQLModel, table=True):
     object_id: str = SQLField(primary_key=True)
