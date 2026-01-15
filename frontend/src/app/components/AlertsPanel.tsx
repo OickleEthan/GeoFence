@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { AlertEvent, AlertType } from '../api/types';
-import { Bell, CheckCircle, AlertTriangle, Info, MapPin } from 'lucide-react';
+import { Bell, CheckCircle, AlertTriangle, Info, MapPin, LogIn, LogOut, List } from 'lucide-react';
 import './AlertsPanel.css';
 
 export const AlertsPanel: React.FC = () => {
     const [alerts, setAlerts] = useState<AlertEvent[]>([]);
+    const [alertFilter, setAlertFilter] = useState('all');
 
     useEffect(() => {
         const fetchAlerts = async () => {
@@ -45,10 +46,46 @@ export const AlertsPanel: React.FC = () => {
         <div className="alerts-panel">
             <div className="alerts-header">
                 <h3>Live Alerts</h3>
+                <div className="filter-buttons">
+                    <button
+                        className={`filter-btn ${alertFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setAlertFilter('all')}
+                    >
+                        <List size={16} />
+                        <span className="tooltip">Show All</span>
+                    </button>
+                    <button
+                        className={`filter-btn ${alertFilter === 'enter' ? 'active' : ''}`}
+                        onClick={() => setAlertFilter('enter')}
+                    >
+                        <LogIn size={16} />
+                        <span className="tooltip">Show Enter</span>
+                    </button>
+                    <button
+                        className={`filter-btn ${alertFilter === 'exit' ? 'active' : ''}`}
+                        onClick={() => setAlertFilter('exit')}
+                    >
+                        <LogOut size={16} />
+                        <span className="tooltip">Show Exit</span>
+                    </button>
+                    <button
+                        className={`filter-btn ${alertFilter === 'low_confidence' ? 'active' : ''}`}
+                        onClick={() => setAlertFilter('low_confidence')}
+                    >
+                        <AlertTriangle size={16} />
+                        <span className="tooltip">Show Low Confidence</span>
+                    </button>
+                </div>
             </div>
             <div className="alerts-list">
                 {alerts.length === 0 && <div className="no-alerts">No alerts yet</div>}
-                {alerts.map(alert => (
+                {alerts.filter(alert => {
+                    if (alertFilter === 'all') return true;
+                    if (alertFilter === 'enter') return alert.alert_type === 'ENTER';
+                    if (alertFilter === 'exit') return alert.alert_type === 'EXIT';
+                    if (alertFilter === 'low_confidence') return alert.alert_type === 'LOW_CONFIDENCE';
+                    return true;
+                }).map(alert => (
                     <div key={alert.id} className={`alert-item ${alert.alert_type.toLowerCase()} ${alert.ack ? 'acked' : ''}`}>
                         <div className="alert-top">
                             {getIcon(alert.alert_type)}

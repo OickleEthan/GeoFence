@@ -7,6 +7,7 @@ import { api } from './api/client';
 
 function App() {
     const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+    const [isFollowing, setIsFollowing] = useState(false);
     const [objects, setObjects] = useState<TrackedObject[]>([]);
     const [zones, setZones] = useState<Zone[]>([]);
     const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
@@ -24,6 +25,7 @@ function App() {
     // Callback when user clicks a marker
     const handleObjectSelect = useCallback((obj: TrackedObject | null) => {
         setSelectedObjectId(obj ? obj.id : null);
+        setIsFollowing(false); // Reset follow on new selection
     }, []);
 
     // Callback when MapView fetches new objects
@@ -40,6 +42,7 @@ function App() {
     const handleZoneSelect = useCallback((zone: Zone) => {
         setSelectedZoneId(zone.id || null);
         setSelectedObjectId(null); // Deselect object when zone selected
+        setIsFollowing(false);
     }, []);
 
     const handleRemoveZone = useCallback(async (id: number) => {
@@ -55,6 +58,11 @@ function App() {
     const handleClearSelection = useCallback(() => {
         setSelectedObjectId(null);
         setSelectedZoneId(null);
+        setIsFollowing(false);
+    }, []);
+
+    const handleToggleFollow = useCallback(() => {
+        setIsFollowing(prev => !prev);
     }, []);
 
     return (
@@ -75,6 +83,8 @@ function App() {
                 selectedObject={selectedObject}
                 onCloseDetails={handleClearSelection}
                 sidebarOpen={sidebarOpen}
+                isFollowing={isFollowing}
+                onToggleFollow={handleToggleFollow}
             />
             <MapView
                 onObjectSelect={handleObjectSelect}
@@ -83,6 +93,7 @@ function App() {
                 onZonesUpdate={handleZonesUpdate}
                 onClearSelection={handleClearSelection}
                 selectedObjectId={selectedObjectId}
+                followedObjectId={isFollowing ? selectedObjectId : null}
                 selectedZoneId={selectedZoneId}
                 drawTrigger={drawTrigger}
                 zoneRefreshTrigger={zoneRefreshTrigger}

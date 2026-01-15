@@ -1,15 +1,23 @@
 import React from 'react';
 import { TrackedObject } from '../api/types';
-import { Zap, Activity, Signal } from 'lucide-react';
+import { Zap, Activity, Signal, Navigation } from 'lucide-react';
 import './Overlay.css';
 
 interface OverlayProps {
     selectedObject: TrackedObject | null;
     onCloseDetails: () => void;
     sidebarOpen: boolean;
+    isFollowing: boolean;
+    onToggleFollow: () => void;
 }
 
-export const Overlay: React.FC<OverlayProps> = ({ selectedObject, onCloseDetails, sidebarOpen }) => {
+export const Overlay: React.FC<OverlayProps> = ({
+    selectedObject,
+    onCloseDetails,
+    sidebarOpen,
+    isFollowing,
+    onToggleFollow
+}) => {
     return (
         <div className="overlay-container">
             {/* Header / Brand - Only show when sidebar is closed */}
@@ -28,7 +36,16 @@ export const Overlay: React.FC<OverlayProps> = ({ selectedObject, onCloseDetails
                 <div className="glass-panel details-card">
                     <div className="card-header">
                         <h2>{selectedObject.id}</h2>
-                        <button onClick={onCloseDetails} className="close-btn">×</button>
+                        <div className="header-actions">
+                            <button
+                                onClick={onToggleFollow}
+                                className={`follow-btn ${isFollowing ? 'active' : ''}`}
+                                title={isFollowing ? "Stop Following" : "Follow Asset"}
+                            >
+                                <Navigation size={18} fill={isFollowing ? "currentColor" : "none"} />
+                            </button>
+                            <button onClick={onCloseDetails} className="close-btn">×</button>
+                        </div>
                     </div>
 
                     <div className="stats-grid">

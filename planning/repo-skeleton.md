@@ -1,7 +1,7 @@
 geofence-tracker/
   README.md
-  LICENSE
-  .gitignore
+  package.json (optional root)
+  package-lock.json
 
   planning/
     MVP.md
@@ -24,8 +24,9 @@ geofence-tracker/
     api_ok.schema.json
 
   backend/
+    README.md
     pyproject.toml
-    uv.lock (optional)
+    database_v2.db
     src/
       app/
         main.py
@@ -34,31 +35,23 @@ geofence-tracker/
           routes_telemetry.py
           routes_zones.py
           routes_alerts.py
-        core/
-          config.py
-          logging.py
         db/
           session.py
           models.py
-          migrations/ (optional)
         services/
           ingestion.py
           zone_eval.py
-          alerting.py
-          staleness.py
-        utils/
-          geo.py
-          time.py
         tests/
-          test_zone_eval.py
-          test_dedupe.py
+          # Tests files
 
   frontend/
+    index.html
     package.json
     vite.config.ts
     tsconfig.json
     src/
       main.tsx
+      index.css
       app/
         App.tsx
         api/
@@ -66,19 +59,16 @@ geofence-tracker/
           types.ts
         components/
           MapView.tsx
-          ObjectList.tsx
-          ObjectDetails.tsx
-          ZoneEditor.tsx
+          MapView.css
+          Sidebar.tsx
+          Sidebar.css
+          Overlay.tsx
+          Overlay.css
           AlertsPanel.tsx
-        state/
-          useTelemetry.ts
-          useAlerts.ts
-          useZones.ts
-        styles/
-          app.css
+          AlertsPanel.css
 
   tools/
     telemetry_generator/
       generator.py
-      routes.json
       README.md
+      requirements.txt

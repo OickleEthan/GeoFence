@@ -85,6 +85,36 @@
     margin-bottom: 16px;
 }
 
+.card-header .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.follow-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.follow-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.follow-btn.active {
+    color: #38bdf8;
+    /* sky-400 */
+    background: rgba(56, 189, 248, 0.15);
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;

@@ -18,21 +18,40 @@ I decided to choose this problem because during my interview with Ashley, we had
 - Frontend: React + Vite + TypeScript, MapLibre GL
 - Tooling: Docker Compose optional, Makefile or scripts for one-command run
 
-## Architecture
 ### High-level components
-- Telemetry generator (simulated)
-- Backend ingest + storage + alert evaluation
-- Frontend map UI + zone editor + alert log
+
+```mermaid
+graph TD
+    Generator[Telemetry Generator] -->|REST API| Backend[FastAPI Backend]
+    Backend -->|WebSockets| Frontend[React Map UI]
+    Backend <-->|SQL| DB[(SQLite)]
+```
 
 ### Data flow
-1. Generator emits telemetry points
-2. Backend validates and stores points
-3. Backend updates object state and evaluates zone rules
-4. Frontend subscribes (WebSocket) or polls
-5. UI renders objects, trails, zones, alerts
+
+```mermaid
+sequenceDiagram
+    participant G as Generator
+    participant B as Backend
+    participant DB as Database
+    participant F as Frontend
+
+    G->>B: POST /api/telemetry
+    B->>DB: Store TelemetryPoint
+    B->>B: Evaluate Zone Rules
+    B-->>DB: Update ObjectZoneState
+    B->>F: Broadcast via WebSocket
+    F->>F: Update Map & Alert Log
+```
 
 ### Data model
-Brief description of: TrackedObject, TelemetryPoint, Zone, AlertRule, AlertEvent, ObjectZoneState
+The system tracks assets using the following core entities:
+- **TrackedObject**: Represents an asset (e.g., Drone-1).
+- **TelemetryPoint**: A specific geo-spatial coordinate and state (speed, heading, confidence).
+- **Zone**: User-defined geofences (Polygon/BBox).
+- **AlertRule**: Logic defining when to trigger (e.g., ENTER, EXIT, LOW_CONFIDENCE).
+- **AlertEvent**: A recorded incident when a rule is triggered.
+- **ObjectZoneState**: Tracking the current relationship between an object and a zone.
 
 ## API
 List endpoints with short examples:
@@ -48,11 +67,15 @@ List endpoints with short examples:
 - Boundary rules (edge counts as inside or define explicitly)
 
 ## Failure Modes and Mitigations
-- GPS jitter near boundaries
-- Out-of-order packets
-- Stale/heartbeat
-- Alert fatigue
-- Performance (downsampling trail, fixed UI refresh cadence)
+
+- **GPS Jitter & False Positives**: Handled via confidence thresholds. Telemetry with confidence below the zone's `min_confidence` rule (e.g., `LOW_CONFIDENCE_IN_ZONE`) is flagged or filtered.
+- **Stale Assets**: Objects that haven't sent telemetry within a threshold are marked as `STALE` in the UI to prevent tracking phantom movements.
+- **Alert Fatigue**: 
+  - **Cooldown Windows**: Rules have a configurable cooldown to prevent a single crossing from triggering dozens of alerts.
+  - **Deduplication**: Consecutive identical alerts within a tight window are suppressed.
+- **Performance**: 
+  - Frontend downsamples historical trails.
+  - Backend uses efficient point-in-polygon checks (Ray Casting) before considering database updates.
 
 ## How to Run
 
@@ -93,12 +116,26 @@ python tools/telemetry_generator/generator.py
 ```
 This script simulates drone and vehicle movements across the Canadian Arctic and sends telemetry data to the backend API.
 
+## Demo Steps
+
+1. **Start the Stack**: Ensure Backend, Frontend, and Generator are all running.
+2. **Open the UI**: Navigate to `http://localhost:5173`.
+3. **Observe Live Tracking**: You should see various assets (Drone-A, Vehicle-B) moving across the map.
+4. **Create a Geofence**:
+   - Select the '+' button beside the ACTIVE ZONES text.
+   - Draw a zone on the map.
+   - Double click on the last vertex to close the polygon.
+   - Click **Save Zone**.
+5. **Monitor Alerts**: When the asset enters your drawn zone, an alert will flash in the side panel and remain in the log.
+6. **Test Robustness**: Close the generator and observe objects turning gray (Stale state) after ~10 seconds.
+
 ## Testing
 - Unit tests for: point-in-polygon, state transitions, dedupe
 - Contract tests for API schemas (optional)
 
 ## Tradeoffs and Future Work
-- Geo indexing (PostGIS) if scaling
-- Better smoothing / Kalman filter
-- Role-based auth and multi-tenant isolation
-- Additional map layers (weather, terrain, etc.)
+
+- **SQLite vs PostGIS**: Used SQLite for portability and zero-setup during interviews. For production scale (millions of zones), moving to PostGIS for spatial indexing is recommended.
+- **Ray Casting vs Topology**: Zone crossing uses a standard Ray Casting algorithm. Complex self-intersecting polygons might require more robust topological checks.
+- **WebSocket Scaling**: Currently uses a simple broadcast. For high-volume multi-tenancy, a Pub/Sub model (Redis) would be necessary.
+- **Additional Layers**: Future work includes weather overlay and terrain-aware height tracking (AAR).

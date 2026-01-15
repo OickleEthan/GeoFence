@@ -6,6 +6,7 @@ import { TrackedObject, Zone } from '../api/types';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { Check, X, MapPin } from 'lucide-react';
+import { isAssetStale } from '../utils';
 import './MapView.css';
 
 interface MapViewProps {
@@ -15,6 +16,7 @@ interface MapViewProps {
     onZonesUpdate?: (zones: Zone[]) => void;
     onClearSelection?: () => void;
     selectedObjectId?: string | null;
+    followedObjectId?: string | null;
     selectedZoneId?: number | null;
     drawTrigger?: number;
     zoneRefreshTrigger?: number;
@@ -27,6 +29,7 @@ export const MapView: React.FC<MapViewProps> = ({
     onZonesUpdate,
     onClearSelection,
     selectedObjectId,
+    followedObjectId,
     selectedZoneId,
     drawTrigger,
     zoneRefreshTrigger
@@ -431,6 +434,20 @@ export const MapView: React.FC<MapViewProps> = ({
                 const objects = await api.getObjects();
                 updateMarkers(objects);
                 updateTrails(objects);
+
+                // Follow Logic
+                if (followedObjectId && map.current) {
+                    const obj = objects.find(o => o.id === followedObjectId);
+                    if (obj) {
+                        map.current.easeTo({
+                            center: [obj.last_lon, obj.last_lat],
+                            // zoom: 13, // Removed to allow user zooming
+                            duration: 1000,
+                            easing: (t) => t
+                        });
+                    }
+                }
+
                 if (onObjectsUpdate) {
                     onObjectsUpdate(objects);
                 }
@@ -440,7 +457,7 @@ export const MapView: React.FC<MapViewProps> = ({
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [onObjectsUpdate]);
+    }, [onObjectsUpdate, followedObjectId]);
 
     // Trigger Drawing Mode from Sidebar
     useEffect(() => {
@@ -722,28 +739,49 @@ export const MapView: React.FC<MapViewProps> = ({
 
         // Add/Update markers
         objects.forEach(obj => {
-            if (!markers.current[obj.id]) {
+            let marker = markers.current[obj.id];
+
+            if (!marker) {
                 // Create new marker
                 const el = document.createElement('div');
                 el.className = 'marker';
+                // Navigation Arrow SVG
+                el.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29C4.24 20.89 4.96 21.46 5.51 21.11L12 17.5L18.49 21.11C19.04 21.46 19.76 20.89 19.5 20.29L12 2Z" /></svg>`;
+
                 el.addEventListener('click', (e) => {
                     console.log(`Marker clicked: ${obj.id}`);
                     e.stopPropagation();
                     onObjectSelectRef.current(obj);
                 });
 
-                // Simple style for now
-                el.style.backgroundColor = '#fca5a5'; // Red-300 default
-                if (obj.id.includes('drone')) el.style.backgroundColor = '#fbbf24'; // Amber
-                if (obj.id.includes('vehicle')) el.style.backgroundColor = '#34d399'; // Green
-
-                markers.current[obj.id] = new maplibregl.Marker({ element: el })
+                marker = new maplibregl.Marker({ element: el })
                     .setLngLat([obj.last_lon, obj.last_lat])
+                    .setRotationAlignment('map')
                     .addTo(map.current!);
+                markers.current[obj.id] = marker;
             } else {
                 // Animate to new position
-                markers.current[obj.id].setLngLat([obj.last_lon, obj.last_lat]);
+                marker.setLngLat([obj.last_lon, obj.last_lat]);
             }
+
+            // Update Rotation
+            marker.setRotation(obj.heading_deg || 0);
+
+            // Update Style (every tick)
+            const el = marker.getElement();
+            const isStale = isAssetStale(obj);
+
+            // Set color on the container, which SVG inherits via currentColor
+            if (isStale) {
+                el.style.color = '#9ca3af'; // Gray-400
+            } else {
+                let color = '#fca5a5'; // Red-300 default
+                if (obj.id.includes('drone')) color = '#fbbf24'; // Amber
+                if (obj.id.includes('vehicle')) color = '#34d399'; // Green
+                el.style.color = color;
+            }
+            // Ensure background is transparent for the arrow shape
+            el.style.backgroundColor = 'transparent';
         });
     };
 
