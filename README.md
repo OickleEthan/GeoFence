@@ -1,3 +1,5 @@
+![Banner](planning/frontpage.png)
+
 # Arctic Corridor Track and Geofence Alerts
 
 ## Overview
@@ -54,7 +56,7 @@ The system tracks assets using the following core entities:
 - **ObjectZoneState**: Tracking the current relationship between an object and a zone.
 
 ## API
-List endpoints with short examples:
+List of API endpoints:
 - POST /api/telemetry
 - GET /api/objects
 - GET /api/objects/{id}/telemetry
@@ -138,4 +140,4 @@ This script simulates drone and vehicle movements across the Canadian Arctic and
 - **SQLite vs PostGIS**: Used SQLite for portability and zero-setup during interviews. For production scale (millions of zones), moving to PostGIS for spatial indexing is recommended.
 - **Ray Casting vs Topology**: Zone crossing uses a standard Ray Casting algorithm. Complex self-intersecting polygons might require more robust topological checks.
 - **WebSocket Scaling**: Currently uses a simple broadcast. For high-volume multi-tenancy, a Pub/Sub model (Redis) would be necessary.
-- **Additional Layers**: Future work includes weather overlay and terrain-aware height tracking (AAR).
+- **Additional Layers**: Future work includes more in depth weather overlay and terrain-aware height tracking (AAR).
