@@ -47,14 +47,29 @@ export const MapView: React.FC<MapViewProps> = ({
     const [tempCoords, setTempCoords] = useState<number[][] | null>(null);
 
     // Map Style State
-    const [mapStyle, setMapStyle] = useState<'dark' | 'topo'>('dark');
+    const [mapStyle, setMapStyle] = useState<'dark' | 'topo' | 'weather'>('dark');
+    const [weatherData, setWeatherData] = useState<{ host: string, path: string } | null>(null);
 
-    // Update refs when props change
+    // Fetch Weather Data
     useEffect(() => {
-        onObjectSelectRef.current = onObjectSelect;
-        onZoneSelectRef.current = onZoneSelect;
-        onClearSelectionRef.current = onClearSelection;
-    }, [onObjectSelect, onZoneSelect, onClearSelection]);
+        const fetchWeather = async () => {
+            try {
+                const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const data = await res.json();
+                // Get the last "past" frame or "nowcast"
+                if (data.radar && data.radar.past && data.radar.past.length > 0) {
+                    const lastFrame = data.radar.past[data.radar.past.length - 1];
+                    setWeatherData({
+                        host: data.host || 'https://tilecache.rainviewer.com',
+                        path: lastFrame.path
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch weather data", error);
+            }
+        };
+        fetchWeather();
+    }, []);
 
     // Initialize Map
     useEffect(() => {
@@ -114,8 +129,6 @@ export const MapView: React.FC<MapViewProps> = ({
             zoom: 3,
             pitch: 45,
         });
-
-
 
         // Only overriding the specific styles causing issues (lines)
         const customStyles = [
@@ -298,6 +311,7 @@ export const MapView: React.FC<MapViewProps> = ({
             }
         });
 
+        // Add proper load handler
         map.current.on('load', () => {
             loadZones();
         });
@@ -342,18 +356,71 @@ export const MapView: React.FC<MapViewProps> = ({
 
     }, []);
 
+    // Create Weather Layer when path is available
+    useEffect(() => {
+        if (!map.current || !weatherData) return;
+
+        const addWeatherLayer = () => {
+            if (!map.current) return;
+            const sourceId = 'rainviewer';
+            const layerId = 'rainviewer-layer';
+
+            if (!map.current.getSource(sourceId)) {
+                map.current.addSource(sourceId, {
+                    type: 'raster',
+                    tiles: [
+                        `${weatherData.host}${weatherData.path}/256/{z}/{x}/{y}/2/1_1.png`
+                    ],
+                    tileSize: 256
+                });
+
+                map.current.addLayer({
+                    id: layerId,
+                    type: 'raster',
+                    source: sourceId,
+                    paint: {
+                        'raster-opacity': 0.7
+                    },
+                    layout: {
+                        visibility: 'none'
+                    }
+                });
+
+                // If we're already in weather mode, show it
+                if (mapStyle === 'weather') {
+                    map.current.setLayoutProperty(layerId, 'visibility', 'visible');
+                }
+            }
+        };
+
+        if (map.current.isStyleLoaded()) {
+            addWeatherLayer();
+        } else {
+            map.current.once('load', addWeatherLayer);
+        }
+    }, [weatherData]);
+
     // Handle Style Switch
     useEffect(() => {
         if (!map.current) return;
 
-        if (map.current.getLayer('carto-dark-layer') && map.current.getLayer('opentopo-layer')) {
-            if (mapStyle === 'dark') {
-                map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'visible');
-                map.current.setLayoutProperty('opentopo-layer', 'visibility', 'none');
-            } else {
-                map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'none');
-                map.current.setLayoutProperty('opentopo-layer', 'visibility', 'visible');
-            }
+        const hasDark = map.current.getLayer('carto-dark-layer');
+        const hasTopo = map.current.getLayer('opentopo-layer');
+        const hasWeather = map.current.getLayer('rainviewer-layer');
+
+        if (mapStyle === 'dark') {
+            if (hasDark) map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'visible');
+            if (hasTopo) map.current.setLayoutProperty('opentopo-layer', 'visibility', 'none');
+            if (hasWeather) map.current.setLayoutProperty('rainviewer-layer', 'visibility', 'none');
+        } else if (mapStyle === 'topo') {
+            if (hasDark) map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'none');
+            if (hasTopo) map.current.setLayoutProperty('opentopo-layer', 'visibility', 'visible');
+            if (hasWeather) map.current.setLayoutProperty('rainviewer-layer', 'visibility', 'none');
+        } else if (mapStyle === 'weather') {
+            // Weather is Dark base + Weather layer
+            if (hasDark) map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'visible');
+            if (hasTopo) map.current.setLayoutProperty('opentopo-layer', 'visibility', 'none');
+            if (hasWeather) map.current.setLayoutProperty('rainviewer-layer', 'visibility', 'visible');
         }
     }, [mapStyle]);
 
@@ -524,7 +591,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
     // Update Trails
     const updateTrails = async (objects: TrackedObject[]) => {
-        if (!map.current) return;
+        if (!map.current || !map.current.isStyleLoaded()) return;
 
         for (const obj of objects) {
             try {
@@ -757,6 +824,21 @@ export const MapView: React.FC<MapViewProps> = ({
                 >
                     Topo
                 </button>
+                <button
+                    onClick={() => setMapStyle('weather')}
+                    style={{
+                        backgroundColor: mapStyle === 'weather' ? '#06b6d4' : 'transparent',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '12px'
+                    }}
+                >
+                    Weather
+                </button>
             </div>
 
             {isEditingZone && (
@@ -818,6 +900,136 @@ export const MapView: React.FC<MapViewProps> = ({
                             Click on the map to start drawing your zone polygon...
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Topo Height Legend */}
+            {mapStyle === 'topo' && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '50px',
+                    right: '10px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    padding: '8px 4px',
+                    borderRadius: '4px',
+                    color: 'white',
+                    fontSize: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                    pointerEvents: 'none',
+                    border: '1px solid #444',
+                    zIndex: 20
+                }}>
+                    <div style={{ fontSize: '9px', textAlign: 'center', marginBottom: '2px', lineHeight: '1.2' }}>
+                        Elevation<br />(m)
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', height: '150px' }}>
+                        {/* Color Bar */}
+                        <div style={{
+                            width: '12px',
+                            height: '100%',
+                            background: `linear-gradient(to top, 
+                                #71a671 0%,   /* Low Green */
+                                #f2e6b5 30%,  /* Beige */
+                                #c9a478 60%,  /* Light Brown */
+                                #875c36 85%,  /* Dark Brown */
+                                #ffffff 100%  /* White */
+                            )`
+                            // Approximate OpenTopoMap: Green -> Beige/Yellow -> Light Brown -> Dark Brown -> White
+                        }} />
+
+                        {/* Labels */}
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            marginLeft: '4px',
+                            fontSize: '9px',
+                            textAlign: 'left'
+                        }}>
+                            <span>4000+</span>
+                            <span>2000</span>
+                            <span>1000</span>
+                            <span>500</span>
+                            <span>200</span>
+                            <span>0</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Weather Legend */}
+            {mapStyle === 'weather' && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '50px',
+                    right: '10px', // Bottom right
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    padding: '8px 4px',
+                    borderRadius: '4px',
+                    color: 'white',
+                    fontSize: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                    pointerEvents: 'none',
+                    border: '1px solid #444',
+                    zIndex: 20 // Ensure it's above map controls
+                }}>
+                    <div style={{ fontSize: '9px', textAlign: 'center', marginBottom: '2px', lineHeight: '1.2' }}>
+                        Rain/Pluie<br />mm/hr
+                    </div>
+
+                    {/* Gradient Bar Container */}
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', height: '150px' }}>
+                        {/* dBZ Labels (Left side like reference or Right side depending on pref) 
+                           User asked for "right side" labels in plan, but reference shows them on right of color bar usually?
+                           Reference image actually has scale on left? No, reference shows labels on right.
+                           Let's put labels on the right.
+                        */}
+
+                        {/* Color Bar */}
+                        <div style={{
+                            width: '12px',
+                            height: '100%',
+                            background: `linear-gradient(to top, 
+                                #000000 0%,
+                                #40e0d0 10%, 
+                                #0000ff 30%, 
+                                #00ff00 50%, 
+                                #ffff00 70%, 
+                                #ff0000 90%, 
+                                #ff00ff 100%
+                            )`
+                            // Approximate radar colors: Black (None) -> Teal -> Blue -> Green -> Yellow -> Red -> Pink/Purple (Hail)
+                            // Better stepped gradient per standard dBZ? 
+                            // Let's use a stepped gradient to match "radar" feel better.
+                        }} />
+
+                        {/* Labels */}
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            marginLeft: '4px',
+                            fontSize: '9px',
+                            textAlign: 'left'
+                        }}>
+                            <span>Hail</span>
+                            <span>100</span>
+                            <span>50</span>
+                            <span>25</span>
+                            <span>10</span>
+                            <span>5</span>
+                            <span>1</span>
+                            <span>0</span>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '8px', marginTop: '2px', color: '#888' }}>dBZ</div>
                 </div>
             )}
         </div>
