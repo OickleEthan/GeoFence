@@ -78,6 +78,7 @@ function App() {
             />
             <MapView
                 onObjectSelect={handleObjectSelect}
+                onZoneSelect={handleZoneSelect}
                 onObjectsUpdate={handleObjectsUpdate}
                 onZonesUpdate={handleZonesUpdate}
                 onClearSelection={handleClearSelection}

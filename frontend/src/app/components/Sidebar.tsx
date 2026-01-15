@@ -1,5 +1,5 @@
 import { TrackedObject, Zone } from '../api/types';
-import { ChevronLeft, ChevronRight, Map, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Map, Plus, Trash2, Battery, Signal } from 'lucide-react';
 import { AlertsPanel } from './AlertsPanel';
 import './Sidebar.css';
 
@@ -85,12 +85,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <div className="object-name">{obj.id}</div>
                                     <div className="object-meta">
                                         <span className="last-seen">{timeAgo(obj.last_seen)}</span>
-                                        <span
-                                            className="confidence-badge"
-                                            style={{ backgroundColor: getConfidenceColor(obj.last_confidence) }}
-                                        >
-                                            {(obj.last_confidence * 100).toFixed(0)}%
-                                        </span>
+                                        <div className="metrics-container" style={{ display: 'flex', gap: '8px' }}>
+                                            {obj.battery_pct !== undefined && (
+                                                <span
+                                                    className="metric-badge"
+                                                    title={`Battery: ${obj.battery_pct.toFixed(1)}%`}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        fontSize: '0.7rem',
+                                                        color: obj.battery_pct < 20 ? '#f87171' : '#94a3b8'
+                                                    }}
+                                                >
+                                                    <Battery size={12} />
+                                                    {obj.battery_pct.toFixed(0)}%
+                                                </span>
+                                            )}
+                                            <span
+                                                className="confidence-badge"
+                                                title="Confidence"
+                                                style={{
+                                                    backgroundColor: getConfidenceColor(obj.last_confidence),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <Signal size={10} />
+                                                {(obj.last_confidence * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

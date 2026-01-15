@@ -21,7 +21,7 @@ Make it interview-ready: clarity, reliability, and good explanations.
 
 ## Optional if time remains
 - [ ] WebSocket streaming for telemetry + alerts
-- [ ] Polygon drawing tool (upgrade from bbox)
+- [x] Polygon drawing tool (upgrade from bbox)
 
 ## Final deliverable
 Clean repo with reproducible run instructions and a crisp 1–2 page design explanation.

@@ -10,6 +10,7 @@ import './MapView.css';
 
 interface MapViewProps {
     onObjectSelect: (obj: TrackedObject | null) => void;
+    onZoneSelect: (zone: Zone) => void;
     onObjectsUpdate?: (objects: TrackedObject[]) => void;
     onZonesUpdate?: (zones: Zone[]) => void;
     onClearSelection?: () => void;
@@ -21,6 +22,7 @@ interface MapViewProps {
 
 export const MapView: React.FC<MapViewProps> = ({
     onObjectSelect,
+    onZoneSelect,
     onObjectsUpdate,
     onZonesUpdate,
     onClearSelection,
@@ -33,7 +35,9 @@ export const MapView: React.FC<MapViewProps> = ({
     const map = useRef<maplibregl.Map | null>(null);
     const draw = useRef<MapboxDraw | null>(null);
     const markers = useRef<{ [key: string]: maplibregl.Marker }>({});
+    const zonesRef = useRef<Zone[]>([]);
     const onObjectSelectRef = useRef(onObjectSelect);
+    const onZoneSelectRef = useRef(onZoneSelect);
     const onClearSelectionRef = useRef(onClearSelection);
 
     // Editing State
@@ -42,11 +46,15 @@ export const MapView: React.FC<MapViewProps> = ({
     const [editingZoneColor, setEditingZoneColor] = useState('#06b6d4');
     const [tempCoords, setTempCoords] = useState<number[][] | null>(null);
 
+    // Map Style State
+    const [mapStyle, setMapStyle] = useState<'dark' | 'topo'>('dark');
+
     // Update refs when props change
     useEffect(() => {
         onObjectSelectRef.current = onObjectSelect;
+        onZoneSelectRef.current = onZoneSelect;
         onClearSelectionRef.current = onClearSelection;
-    }, [onObjectSelect, onClearSelection]);
+    }, [onObjectSelect, onZoneSelect, onClearSelection]);
 
     // Initialize Map
     useEffect(() => {
@@ -67,20 +75,205 @@ export const MapView: React.FC<MapViewProps> = ({
                         ],
                         tileSize: 256,
                         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    },
+                    'opentopo': {
+                        type: 'raster',
+                        tiles: [
+                            'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+                            'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
+                            'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'
+                        ],
+                        tileSize: 256,
+                        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
                     }
                 },
-                layers: [{
-                    id: 'carto-dark-layer',
-                    type: 'raster',
-                    source: 'carto-dark',
-                    minzoom: 0,
-                    maxzoom: 22
-                }]
+                layers: [
+                    {
+                        id: 'carto-dark-layer',
+                        type: 'raster',
+                        source: 'carto-dark',
+                        minzoom: 0,
+                        maxzoom: 22,
+                        layout: {
+                            visibility: 'visible'
+                        }
+                    },
+                    {
+                        id: 'opentopo-layer',
+                        type: 'raster',
+                        source: 'opentopo',
+                        minzoom: 0,
+                        maxzoom: 17,
+                        layout: {
+                            visibility: 'none'
+                        }
+                    }
+                ]
             },
             center: [-68.5170, 63.7467], // Iqaluit
             zoom: 3,
             pitch: 45,
         });
+
+
+
+        // Only overriding the specific styles causing issues (lines)
+        const customStyles = [
+            // ACTIVE (being drawn)
+            // line stroke
+            {
+                "id": "gl-draw-line-active.cold",
+                "type": "line",
+                "filter": ["all", ["==", "$type", "LineString"], ["==", "active", "false"], ["==", "mode", "simple_select"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#3bb2d0",
+                    "line-width": 2
+                }
+            },
+            {
+                "id": "gl-draw-line-active.hot",
+                "type": "line",
+                "filter": ["all", ["==", "$type", "LineString"], ["==", "active", "true"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#fbb03b",
+                    "line-dasharray": ["literal", [0.2, 2]],
+                    "line-width": 2
+                }
+            },
+            // polygon stroke
+            {
+                "id": "gl-draw-polygon-stroke-active",
+                "type": "line",
+                "filter": ["all", ["==", "$type", "Polygon"], ["==", "active", "true"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#fbb03b",
+                    "line-dasharray": ["literal", [0.2, 2]],
+                    "line-width": 2
+                }
+            },
+            // INACTIVE (static)
+            {
+                "id": "gl-draw-line-static",
+                "type": "line",
+                "filter": ["all", ["==", "$type", "LineString"], ["==", "mode", "static"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#404040",
+                    "line-width": 2
+                }
+            },
+            {
+                "id": "gl-draw-polygon-stroke-static",
+                "type": "line",
+                "filter": ["all", ["==", "$type", "Polygon"], ["==", "mode", "static"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#404040",
+                    "line-width": 2
+                }
+            },
+            {
+                "id": "gl-draw-polygon-fill-static",
+                "type": "fill",
+                "filter": ["all", ["==", "$type", "Polygon"], ["==", "mode", "static"]],
+                "paint": {
+                    "fill-color": "#404040",
+                    "fill-outline-color": "#404040",
+                    "fill-opacity": 0.1
+                }
+            },
+            {
+                "id": "gl-draw-polygon-fill-active",
+                "type": "fill",
+                "filter": ["all", ["==", "$type", "Polygon"], ["==", "active", "true"]],
+                "paint": {
+                    "fill-color": "#fbb03b",
+                    "fill-outline-color": "#fbb03b",
+                    "fill-opacity": 0.1
+                }
+            },
+            {
+                "id": "gl-draw-polygon-midpoint",
+                "type": "circle",
+                "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
+                "paint": {
+                    "circle-radius": 3,
+                    "circle-color": "#fbb03b"
+                }
+            },
+            {
+                "id": "gl-draw-polygon-and-line-vertex-stroke-active",
+                "type": "circle",
+                "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "mode", "static"]],
+                "paint": {
+                    "circle-radius": 5,
+                    "circle-color": "#fff"
+                }
+            },
+            {
+                "id": "gl-draw-polygon-and-line-vertex-active",
+                "type": "circle",
+                "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "mode", "static"]],
+                "paint": {
+                    "circle-radius": 3,
+                    "circle-color": "#fbb03b"
+                }
+            },
+            {
+                "id": "gl-draw-line-inactive",
+                "type": "line",
+                "filter": ["all", ["==", "active", "false"], ["==", "$type", "LineString"], ["!=", "mode", "static"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#3bb2d0",
+                    "line-width": 2
+                }
+            },
+            {
+                "id": "gl-draw-polygon-stroke-inactive",
+                "type": "line",
+                "filter": ["all", ["==", "active", "false"], ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                "paint": {
+                    "line-color": "#3bb2d0",
+                    "line-width": 2
+                }
+            },
+            {
+                "id": "gl-draw-polygon-fill-inactive",
+                "type": "fill",
+                "filter": ["all", ["==", "active", "false"], ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+                "paint": {
+                    "fill-color": "#3bb2d0",
+                    "fill-outline-color": "#3bb2d0",
+                    "fill-opacity": 0.1
+                }
+            }
+        ];
 
         draw.current = new MapboxDraw({
             displayControlsDefault: false,
@@ -88,10 +281,12 @@ export const MapView: React.FC<MapViewProps> = ({
                 polygon: false,
                 trash: false
             },
-            defaultMode: 'simple_select'
+            defaultMode: 'simple_select',
+            styles: customStyles
         });
 
-        map.current.addControl(draw.current as any, 'top-left');
+        // @ts-ignore
+        map.current.addControl(draw.current, 'top-left');
 
         map.current.on('draw.create', (e) => {
             const feature = e.features[0];
@@ -108,13 +303,59 @@ export const MapView: React.FC<MapViewProps> = ({
         });
 
         map.current.on('click', (e) => {
-            console.log("Map background clicked");
-            if (onClearSelectionRef.current) {
-                onClearSelectionRef.current();
+            // Only clear if clicking on background (not a feature)
+            // But 'click' on map fires for everything.
+            // We can check if defaultPrevented or stopPropagation was called?
+            // MapLibre doesn't strictly support stopPropagation from layer to map easily without checking features at point.
+            // However, layer click fires first?
+            // Let's check if the click target suggests a feature.
+            const features = map.current?.queryRenderedFeatures(e.point, { layers: ['zones-fill'] });
+            if (!features || features.length === 0) {
+                console.log("Map background clicked");
+                if (onClearSelectionRef.current) {
+                    onClearSelectionRef.current();
+                }
             }
         });
 
+        // Zone Click Handler
+        map.current.on('click', 'zones-fill', (e) => {
+            if (e.features && e.features.length > 0) {
+                const feature = e.features[0];
+                const zoneId = feature.properties?.id;
+                // Find full zone object
+                const zone = zonesRef.current.find(z => z.id === zoneId);
+                if (zone && onZoneSelectRef.current) {
+                    onZoneSelectRef.current(zone);
+                }
+            }
+        });
+
+        // Zone Hover Effects
+        map.current.on('mouseenter', 'zones-fill', () => {
+            if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.current.on('mouseleave', 'zones-fill', () => {
+            if (map.current) map.current.getCanvas().style.cursor = '';
+        });
+
     }, []);
+
+    // Handle Style Switch
+    useEffect(() => {
+        if (!map.current) return;
+
+        if (map.current.getLayer('carto-dark-layer') && map.current.getLayer('opentopo-layer')) {
+            if (mapStyle === 'dark') {
+                map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'visible');
+                map.current.setLayoutProperty('opentopo-layer', 'visibility', 'none');
+            } else {
+                map.current.setLayoutProperty('carto-dark-layer', 'visibility', 'none');
+                map.current.setLayoutProperty('opentopo-layer', 'visibility', 'visible');
+            }
+        }
+    }, [mapStyle]);
 
     // Polling Loop for Objects
     useEffect(() => {
@@ -177,26 +418,27 @@ export const MapView: React.FC<MapViewProps> = ({
                 const zone = zones.find(z => z.id === selectedZoneId);
                 if (!zone) return;
 
-                let center: [number, number];
+                const bounds = new maplibregl.LngLatBounds();
+
                 if (zone.is_polygon && zone.polygon_coords) {
                     const coords = JSON.parse(zone.polygon_coords) as number[][];
-                    // Calculate centroid
-                    const lats = coords.map(c => c[0]);
-                    const lons = coords.map(c => c[1]);
-                    const avgLat = lats.reduce((a, b) => a + b) / lats.length;
-                    const avgLon = lons.reduce((a, b) => a + b) / lons.length;
-                    center = [avgLon, avgLat];
+                    // Coords are [lat, lon] from backend (python)
+                    // Extend bounds with [lon, lat] for MapLibre
+                    coords.forEach(c => bounds.extend([c[1], c[0]]));
                 } else if (zone.min_lon !== undefined && zone.max_lon !== undefined && zone.min_lat !== undefined && zone.max_lat !== undefined) {
-                    center = [(zone.min_lon + zone.max_lon) / 2, (zone.min_lat + zone.max_lat) / 2];
+                    bounds.extend([zone.min_lon, zone.min_lat]);
+                    bounds.extend([zone.max_lon, zone.max_lat]);
                 } else {
                     return;
                 }
 
-                map.current?.flyTo({
-                    center: center,
-                    zoom: 14,
-                    duration: 1500
-                });
+                if (map.current) {
+                    map.current.fitBounds(bounds, {
+                        padding: { top: 50, bottom: 50, left: 50, right: 350 }, // Extra right padding for sidebar
+                        duration: 1500
+                    });
+                }
+
             } catch (e) {
                 console.error("Failed to fly to zone", e);
             }
@@ -204,6 +446,81 @@ export const MapView: React.FC<MapViewProps> = ({
 
         flyToZone();
     }, [selectedZoneId]);
+
+    // Selected Object History Tail
+    useEffect(() => {
+        const updateSelectedHistory = async () => {
+            if (!map.current) return;
+
+            const sourceId = 'selected-history';
+            const layerId = 'selected-history-layer';
+
+            // Clean up if no object selected
+            if (!selectedObjectId) {
+                if (map.current.getSource(sourceId)) {
+                    (map.current.getSource(sourceId) as maplibregl.GeoJSONSource).setData({
+                        type: 'FeatureCollection',
+                        features: []
+                    });
+                }
+                return;
+            }
+
+            try {
+                // Fetch longer history for valid context
+                const history = await api.getHistory(selectedObjectId, 1000);
+                // Sort by timestamp
+                const sorted = history.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+                const coordinates = sorted.map(r => [r.lon, r.lat]);
+
+                const geoData: GeoJSON.FeatureCollection = {
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: coordinates
+                        },
+                        properties: {}
+                    }]
+                };
+
+                if (map.current.getSource(sourceId)) {
+                    (map.current.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geoData);
+                } else {
+                    map.current.addSource(sourceId, { type: 'geojson', data: geoData });
+
+                    // Add layer before markers but maybe after tiles?
+                    // If we don't specify strict order, it might overlay others.
+                    // We want it visually behind the active "hot" trails (which are added dynamically).
+                    // The active trails are added with `map.current.nextLayerId` implied order.
+                    // We'll add this one and move it to bottom if needed, or rely on distinct styling.
+                    map.current.addLayer({
+                        id: layerId,
+                        type: 'line',
+                        source: sourceId,
+                        layout: {
+                            'line-join': 'round',
+                            'line-cap': 'round'
+                        },
+                        paint: {
+                            'line-color': '#9ca3af', // gray-400
+                            'line-width': 2,
+                            'line-opacity': 0.8,
+                            'line-dasharray': [2, 1] // Optional aesthetic
+                        }
+                    });
+
+                    // Move it behind others if possible
+                    // map.current.moveLayer(layerId, 'first-marker-layer-id'); // We don't have a stable marker layer ID reference yet
+                }
+            } catch (e) {
+                console.error("Failed to update selected history", e);
+            }
+        };
+
+        updateSelectedHistory();
+    }, [selectedObjectId]);
 
     // Update Trails
     const updateTrails = async (objects: TrackedObject[]) => {
@@ -262,6 +579,7 @@ export const MapView: React.FC<MapViewProps> = ({
     const loadZones = async () => {
         try {
             const z = await api.getZones();
+            zonesRef.current = z;
             renderZones(z);
             if (onZonesUpdate) {
                 onZonesUpdate(z);
@@ -396,6 +714,50 @@ export const MapView: React.FC<MapViewProps> = ({
     return (
         <div className="map-wrapper">
             <div ref={mapContainer} className="map-container" />
+
+            {/* Style Switcher */}
+            <div className="map-style-switcher" style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                zIndex: 10,
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                padding: '4px',
+                borderRadius: '8px',
+                display: 'flex',
+                gap: '4px'
+            }}>
+                <button
+                    onClick={() => setMapStyle('dark')}
+                    style={{
+                        backgroundColor: mapStyle === 'dark' ? '#06b6d4' : 'transparent',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '12px'
+                    }}
+                >
+                    Dark
+                </button>
+                <button
+                    onClick={() => setMapStyle('topo')}
+                    style={{
+                        backgroundColor: mapStyle === 'topo' ? '#06b6d4' : 'transparent',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '12px'
+                    }}
+                >
+                    Topo
+                </button>
+            </div>
 
             {isEditingZone && (
                 <div className="zone-editor-overlay">
