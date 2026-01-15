@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../api/client';
-import { AlertEvent, AlertType } from '../api/types';
+import { api } from '../api/client.ts';
+import { AlertEvent, AlertType } from '../api/types.ts';
 import { Bell, CheckCircle, AlertTriangle, Info, MapPin, LogIn, LogOut, List } from 'lucide-react';
 import './AlertsPanel.css';
 
@@ -34,10 +34,10 @@ export const AlertsPanel: React.FC = () => {
 
     const getIcon = (type: AlertType) => {
         switch (type) {
-            case AlertType.ENTER: return <MapPin className="alert-icon enter" size={16} />;
-            case AlertType.EXIT: return <MapPin className="alert-icon exit" size={16} />;
-            case AlertType.LOW_CONFIDENCE: return <AlertTriangle className="alert-icon warning" size={16} />;
-            case AlertType.STALE: return <Bell className="alert-icon error" size={16} />;
+            case 'ENTER': return <MapPin className="alert-icon enter" size={16} />;
+            case 'EXIT': return <MapPin className="alert-icon exit" size={16} />;
+            case 'LOW_CONFIDENCE': return <AlertTriangle className="alert-icon warning" size={16} />;
+            case 'STALE': return <Bell className="alert-icon error" size={16} />;
             default: return <Info className="alert-icon info" size={16} />;
         }
     };
@@ -94,7 +94,7 @@ export const AlertsPanel: React.FC = () => {
                         </div>
                         <div className="alert-message">{alert.message}</div>
                         {!alert.ack && (
-                            <button className="ack-btn" onClick={() => handleAck(alert.id)}>
+                            <button className="ack-btn" onClick={() => alert.id && handleAck(alert.id)}>
                                 <CheckCircle size={14} /> Ack
                             </button>
                         )}

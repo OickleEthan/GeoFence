@@ -1,4 +1,4 @@
-import { TrackedObject, Zone, TelemetryRecord, AlertEvent } from './types';
+import { TrackedObject, Zone, TelemetryRecord, AlertEvent } from './types.ts';
 
 const API_BASE = '/api'; // Vite proxy will handle this
 

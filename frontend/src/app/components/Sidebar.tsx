@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { TrackedObject, Zone } from '../api/types';
+import { TrackedObject, Zone } from '../api/types.ts';
 import { ChevronLeft, ChevronRight, Map, Plus, Trash2, Battery, Signal, Plane, Car, LayoutGrid, AlertTriangle, ChevronDown } from 'lucide-react';
-import { isAssetStale, timeAgo } from '../utils';
-import { AlertsPanel } from './AlertsPanel';
+import { isAssetStale, timeAgo } from '../utils.ts';
+import { AlertsPanel } from './AlertsPanel.tsx';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -149,17 +149,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                             {obj.battery_pct !== undefined && (
                                                                 <span
                                                                     className="metric-badge"
-                                                                    title={`Battery: ${obj.battery_pct.toFixed(1)}%`}
+                                                                    title={`Battery: ${obj.battery_pct?.toFixed(1)}%`}
                                                                     style={{
                                                                         display: 'flex',
                                                                         alignItems: 'center',
                                                                         gap: '4px',
                                                                         fontSize: '0.7rem',
-                                                                        color: obj.battery_pct < 20 ? '#f87171' : '#94a3b8'
+                                                                        color: (obj.battery_pct || 0) < 20 ? '#f87171' : '#94a3b8'
                                                                     }}
                                                                 >
                                                                     <Battery size={12} />
-                                                                    {obj.battery_pct.toFixed(0)}%
+                                                                    {obj.battery_pct?.toFixed(0)}%
                                                                 </span>
                                                             )}
                                                             <span

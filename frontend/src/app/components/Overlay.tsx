@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrackedObject } from '../api/types';
+import { TrackedObject } from '../api/types.ts';
 import { Zap, Activity, Signal, Navigation } from 'lucide-react';
 import './Overlay.css';
 

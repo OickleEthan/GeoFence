@@ -1,1 +1,1 @@
-{"root":["./src/main.tsx","./src/app/app.tsx","./src/app/api/client.ts","./src/app/api/types.ts","./src/app/components/mapview.tsx","./src/app/components/overlay.tsx","./src/app/components/sidebar.tsx"],"version":"5.9.3"}
+{"root":["./src/main.tsx","./src/app/app.tsx","./src/app/utils.ts","./src/app/api/client.ts","./src/app/api/types.ts","./src/app/components/alertspanel.tsx","./src/app/components/mapview.tsx","./src/app/components/overlay.tsx","./src/app/components/sidebar.tsx"],"version":"5.9.3"}

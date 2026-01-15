@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { api } from '../api/client';
-import { TrackedObject, Zone } from '../api/types';
+import { api } from '../api/client.ts';
+import { TrackedObject, Zone } from '../api/types.ts';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { Check, X, MapPin } from 'lucide-react';
-import { isAssetStale } from '../utils';
+import { isAssetStale } from '../utils.ts';
 import './MapView.css';
 
 interface MapViewProps {
@@ -509,7 +509,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     // Coords are [lat, lon] from backend (python)
                     // Extend bounds with [lon, lat] for MapLibre
                     coords.forEach(c => bounds.extend([c[1], c[0]]));
-                } else if (zone.min_lon !== undefined && zone.max_lon !== undefined && zone.min_lat !== undefined && zone.max_lat !== undefined) {
+                } else if (zone.min_lon != null && zone.max_lon != null && zone.min_lat != null && zone.max_lat != null) {
                     bounds.extend([zone.min_lon, zone.min_lat]);
                     bounds.extend([zone.max_lon, zone.max_lat]);
                 } else {

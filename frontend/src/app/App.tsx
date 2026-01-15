@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import { MapView } from './components/MapView';
-import { Overlay } from './components/Overlay';
-import { Sidebar } from './components/Sidebar';
-import { TrackedObject, Zone } from './api/types';
-import { api } from './api/client';
+import { MapView } from './components/MapView.tsx';
+import { Overlay } from './components/Overlay.tsx';
+import { Sidebar } from './components/Sidebar.tsx';
+import { TrackedObject, Zone } from './api/types.ts';
+import { api } from './api/client.ts';
 
 function App() {
     const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);

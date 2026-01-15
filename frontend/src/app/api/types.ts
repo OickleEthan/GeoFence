@@ -1,26 +1,4 @@
-// Domain Types matching Backend
-
-export interface Position {
-    lat: number;
-    lon: number;
-    alt_m?: number;
-}
-
-export interface TelemetryData {
-    speed_mps: number;
-    heading_deg: number;
-    rssi_dbm?: number;
-    battery_pct?: number;
-    source?: string;
-}
-
-export interface TelemetryPoint {
-    object_id: string;
-    ts: string; // ISO String
-    position: Position;
-    confidence: number;
-    telemetry: TelemetryData;
-}
+export type AlertType = 'ENTER' | 'EXIT' | 'LOW_CONFIDENCE' | 'STALE';
 
 export interface TrackedObject {
     id: string;
@@ -28,49 +6,43 @@ export interface TrackedObject {
     last_lat: number;
     last_lon: number;
     last_confidence: number;
-    speed_mps?: number;
-    heading_deg?: number;
-    battery_pct?: number;
-}
-
-export enum AlertType {
-    ENTER = "ENTER",
-    EXIT = "EXIT",
-    LOW_CONFIDENCE = "LOW_CONFIDENCE",
-    STALE = "STALE"
-}
-
-export interface Zone {
-    id?: number;
-    name: string;
-    min_lat?: number;
-    min_lon?: number;
-    max_lat?: number;
-    max_lon?: number;
-    is_polygon: boolean;
-    polygon_coords?: string; // JSON string
-    enabled: boolean;
-    color?: string;
-}
-
-export interface AlertEvent {
-    id: number;
-    ts: string;
-    object_id: string;
-    zone_id?: number;
-    alert_type: AlertType;
-    message: string;
-    ack: boolean;
+    speed_mps?: number | null;
+    heading_deg?: number | null;
+    battery_pct?: number | null;
 }
 
 export interface TelemetryRecord {
-    id: number;
+    id?: number | null;
     object_id: string;
     ts: string;
     lat: number;
     lon: number;
-    alt_m?: number;
-    speed_mps?: number;
-    heading_deg?: number;
-    battery_pct?: number;
+    alt_m?: number | null;
+    speed_mps?: number | null;
+    heading_deg?: number | null;
+    battery_pct?: number | null;
+}
+
+export interface Zone {
+    id?: number | null;
+    name: string;
+    min_lat?: number | null;
+    min_lon?: number | null;
+    max_lat?: number | null;
+    max_lon?: number | null;
+    is_polygon: boolean;
+    polygon_coords?: string | null;
+    enabled: boolean;
+    color: string;
+    created_at?: string | null;
+}
+
+export interface AlertEvent {
+    id?: number | null;
+    ts: string;
+    object_id: string;
+    zone_id?: number | null;
+    alert_type: AlertType;
+    message: string;
+    ack: boolean;
 }
