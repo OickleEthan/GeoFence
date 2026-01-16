@@ -8,6 +8,8 @@ A real-time map-based tracking tool that ingests telemetry for multiple assets, 
 ## Background
 I decided to choose this problem because during my interview with Ashley, we had a discussion about the mission in Feburary where snowmobiles are crossing the Arctic Corridor and Dominion Dynamics is tasked with tracking them. This problem resonated with me and I thought it would be a fun challenge to build a tool to help with this mission.
 
+Description video is located in the Github repo as well as in google drive: https://drive.google.com/file/d/1KtlPa8N93JX_kyjX2_TUJbnWYeqdKowN/view?usp=drive_link
+
 ## Features
 - Live object localization on a map
 - Confidence value + additional telemetry fields (speed, heading, etc.)
