@@ -307,8 +307,7 @@ export const MapView: React.FC<MapViewProps> = ({
         map.current.on('draw.create', (e) => {
             const feature = e.features[0];
             if (feature.geometry.type === 'Polygon') {
-                const coords = feature.geometry.coordinates[0]; // [ [lon, lat], ... ]
-                // Convert to [[lat, lon], ...] for backend
+                const coords = feature.geometry.coordinates[0];
                 const latLonCoords = coords.map((c: number[]) => [c[1], c[0]]);
                 setTempCoords(latLonCoords);
             }
@@ -320,12 +319,6 @@ export const MapView: React.FC<MapViewProps> = ({
         });
 
         map.current.on('click', (e) => {
-            // Only clear if clicking on background (not a feature)
-            // But 'click' on map fires for everything.
-            // We can check if defaultPrevented or stopPropagation was called?
-            // MapLibre doesn't strictly support stopPropagation from layer to map easily without checking features at point.
-            // However, layer click fires first?
-            // Let's check if the click target suggests a feature.
             const features = map.current?.queryRenderedFeatures(e.point, { layers: ['zones-fill'] });
             if (!features || features.length === 0) {
                 console.log("Map background clicked");
@@ -340,7 +333,6 @@ export const MapView: React.FC<MapViewProps> = ({
             if (e.features && e.features.length > 0) {
                 const feature = e.features[0];
                 const zoneId = feature.properties?.id;
-                // Find full zone object
                 const zone = zonesRef.current.find(z => z.id === zoneId);
                 if (zone && onZoneSelectRef.current) {
                     onZoneSelectRef.current(zone);
@@ -441,7 +433,6 @@ export const MapView: React.FC<MapViewProps> = ({
                     if (obj) {
                         map.current.easeTo({
                             center: [obj.last_lon, obj.last_lat],
-                            // zoom: 13, // Removed to allow user zooming
                             duration: 1000,
                             easing: (t) => t
                         });
@@ -506,8 +497,6 @@ export const MapView: React.FC<MapViewProps> = ({
 
                 if (zone.is_polygon && zone.polygon_coords) {
                     const coords = JSON.parse(zone.polygon_coords) as number[][];
-                    // Coords are [lat, lon] from backend (python)
-                    // Extend bounds with [lon, lat] for MapLibre
                     coords.forEach(c => bounds.extend([c[1], c[0]]));
                 } else if (zone.min_lon != null && zone.max_lon != null && zone.min_lat != null && zone.max_lat != null) {
                     bounds.extend([zone.min_lon, zone.min_lat]);
@@ -573,12 +562,6 @@ export const MapView: React.FC<MapViewProps> = ({
                     (map.current.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geoData);
                 } else {
                     map.current.addSource(sourceId, { type: 'geojson', data: geoData });
-
-                    // Add layer before markers but maybe after tiles?
-                    // If we don't specify strict order, it might overlay others.
-                    // We want it visually behind the active "hot" trails (which are added dynamically).
-                    // The active trails are added with `map.current.nextLayerId` implied order.
-                    // We'll add this one and move it to bottom if needed, or rely on distinct styling.
                     map.current.addLayer({
                         id: layerId,
                         type: 'line',
@@ -594,9 +577,6 @@ export const MapView: React.FC<MapViewProps> = ({
                             'line-dasharray': [2, 1] // Optional aesthetic
                         }
                     });
-
-                    // Move it behind others if possible
-                    // map.current.moveLayer(layerId, 'first-marker-layer-id'); // We don't have a stable marker layer ID reference yet
                 }
             } catch (e) {
                 console.error("Failed to update selected history", e);
@@ -678,7 +658,6 @@ export const MapView: React.FC<MapViewProps> = ({
             let coordinates: any = [];
             if (z.is_polygon && z.polygon_coords) {
                 const coords = JSON.parse(z.polygon_coords);
-                // Backend: [[lat, lon], ...], Frontend: [[lon, lat], ...]
                 coordinates = [coords.map((c: any) => [c[1], c[0]])];
             } else if (z.min_lat !== undefined && z.min_lon !== undefined) {
                 coordinates = [[
@@ -976,7 +955,6 @@ export const MapView: React.FC<MapViewProps> = ({
                                 #875c36 85%,  /* Dark Brown */
                                 #ffffff 100%  /* White */
                             )`
-                            // Approximate OpenTopoMap: Green -> Beige/Yellow -> Light Brown -> Dark Brown -> White
                         }} />
 
                         {/* Labels */}
@@ -1024,12 +1002,6 @@ export const MapView: React.FC<MapViewProps> = ({
 
                     {/* Gradient Bar Container */}
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', height: '150px' }}>
-                        {/* dBZ Labels (Left side like reference or Right side depending on pref) 
-                           User asked for "right side" labels in plan, but reference shows them on right of color bar usually?
-                           Reference image actually has scale on left? No, reference shows labels on right.
-                           Let's put labels on the right.
-                        */}
-
                         {/* Color Bar */}
                         <div style={{
                             width: '12px',
@@ -1043,9 +1015,6 @@ export const MapView: React.FC<MapViewProps> = ({
                                 #ff0000 90%, 
                                 #ff00ff 100%
                             )`
-                            // Approximate radar colors: Black (None) -> Teal -> Blue -> Green -> Yellow -> Red -> Pink/Purple (Hail)
-                            // Better stepped gradient per standard dBZ? 
-                            // Let's use a stepped gradient to match "radar" feel better.
                         }} />
 
                         {/* Labels */}
