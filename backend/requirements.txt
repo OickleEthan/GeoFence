@@ -1,0 +1,8 @@
+uvicorn
+fastapi
+sqlmodel
+shapely
+pydantic
+pydantic-settings
+sqlalchemy
+httpx
